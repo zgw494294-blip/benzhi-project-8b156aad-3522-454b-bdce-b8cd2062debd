@@ -89,13 +89,16 @@ func (s *SQLiteStore) UpdateCase(ctx context.Context, caseID string, expectedVer
 	if err := writeIdempotent(ctx, tx, caseID, key, requestHash, current); err != nil {
 		return nil, false, err
 	}
-	if err := tx.Commit(); err != nil {
-		return nil, false, err
-	}
+	// 批准记录与任务变更、审计事件和幂等记录必须同事务原子写入：
+	// 触发器、约束或存储资源拒绝批准记录时，整个操作回滚到调用前状态，
+	// 既不递增版本、不变更为 approved，也不消耗幂等键，故障解除后同一业务请求可重试完成。
 	if current.Approval != nil {
-		if err := insertApproval(ctx, s.db, *current.Approval); err != nil {
+		if err := insertApproval(ctx, tx, *current.Approval); err != nil {
 			return nil, false, err
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, false, err
 	}
 	return current, false, nil
 }
