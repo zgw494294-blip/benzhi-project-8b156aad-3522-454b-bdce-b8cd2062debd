@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -49,6 +50,10 @@ func writeError(w http.ResponseWriter, err error) {
 	code := "internal_error"
 	message := "服务内部错误"
 	switch {
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		status = 499
+		code = "request_canceled"
+		message = "请求已取消，未提交任何变更"
 	case errors.Is(err, domain.ErrNotFound):
 		status = http.StatusNotFound
 		code = "not_found"

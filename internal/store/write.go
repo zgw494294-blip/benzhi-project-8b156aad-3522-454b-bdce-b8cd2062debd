@@ -10,6 +10,14 @@ import (
 	"time"
 )
 
+// contextCanceled reports whether the request context has been cancelled or
+// expired. It is checked immediately before tx.Commit() so the deferred
+// tx.Rollback() abandons all writes performed within the transaction body,
+// preventing a cancelled request from persisting partial state.
+func contextCanceled(ctx context.Context) error {
+	return ctx.Err()
+}
+
 func (s *SQLiteStore) CreateCase(ctx context.Context, value *domain.RestorationCase, key, requestHash string, event domain.AuditEvent) (*domain.RestorationCase, bool, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -31,6 +39,9 @@ func (s *SQLiteStore) CreateCase(ctx context.Context, value *domain.RestorationC
 		return nil, false, err
 	}
 	if err := writeIdempotent(ctx, tx, "create", key, requestHash, value); err != nil {
+		return nil, false, err
+	}
+	if err := contextCanceled(ctx); err != nil {
 		return nil, false, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -87,6 +98,9 @@ func (s *SQLiteStore) UpdateCase(ctx context.Context, caseID string, expectedVer
 		}
 	}
 	if err := writeIdempotent(ctx, tx, caseID, key, requestHash, current); err != nil {
+		return nil, false, err
+	}
+	if err := contextCanceled(ctx); err != nil {
 		return nil, false, err
 	}
 	if err := tx.Commit(); err != nil {
