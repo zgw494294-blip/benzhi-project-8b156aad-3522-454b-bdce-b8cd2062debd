@@ -70,11 +70,7 @@ func VerifyApprovalSnapshot(record *ApprovalRecord) (*ApprovalEvidence, error) {
 	if err := ValidateFormula(snapshot.ApprovedFormula); err != nil {
 		return nil, integrityFailure(VerificationUnparseable, "冻结配方不可解析")
 	}
-	normalized, err := json.Marshal(snapshot)
-	if err != nil {
-		return nil, integrityFailure(VerificationUnparseable, "冻结快照无法规范化")
-	}
-	digest := sha256.Sum256(normalized)
+	digest := sha256.Sum256([]byte(record.SnapshotJSON))
 	actual := hex.EncodeToString(digest[:])
 	if actual != record.SnapshotDigest {
 		return nil, integrityFailure(VerificationDigestMismatch, "冻结快照摘要与批准记录不匹配")
