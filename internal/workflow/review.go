@@ -14,7 +14,7 @@ func (s *Service) SubmitReview(ctx context.Context, caseID string, command Submi
 		return nil, false, err
 	}
 	now := s.now().UTC()
-	return s.repository.UpdateCase(ctx, caseID, command.ExpectedVersion, command.IdempotencyKey, requestHash(command), func(c *domain.RestorationCase) ([]domain.AuditEvent, error) {
+	return s.updateCase(ctx, caseID, command.ExpectedVersion, command.IdempotencyKey, requestHash(command), func(c *domain.RestorationCase) ([]domain.AuditEvent, error) {
 		if err := domain.CanSubmitForReview(c); err != nil {
 			return nil, err
 		}
@@ -44,7 +44,7 @@ func (s *Service) DecideReview(ctx context.Context, caseID string, command Revie
 		return nil, false, domain.Invalid("reviewComment", "审查意见不能为空")
 	}
 	now := s.now().UTC()
-	return s.repository.UpdateCase(ctx, caseID, command.ExpectedVersion, command.IdempotencyKey, requestHash(command), func(c *domain.RestorationCase) ([]domain.AuditEvent, error) {
+	return s.updateCase(ctx, caseID, command.ExpectedVersion, command.IdempotencyKey, requestHash(command), func(c *domain.RestorationCase) ([]domain.AuditEvent, error) {
 		if c.Status != domain.StatusPending {
 			return nil, domain.ErrInvalidState
 		}

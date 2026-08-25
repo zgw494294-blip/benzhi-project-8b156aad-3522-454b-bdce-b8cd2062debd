@@ -23,7 +23,7 @@ func (s *Service) Remediate(ctx context.Context, caseID string, command Remediat
 		return nil, false, err
 	}
 	now := s.now().UTC()
-	return s.repository.UpdateCase(ctx, caseID, command.ExpectedVersion, command.IdempotencyKey, requestHash(command), func(c *domain.RestorationCase) ([]domain.AuditEvent, error) {
+	return s.updateCase(ctx, caseID, command.ExpectedVersion, command.IdempotencyKey, requestHash(command), func(c *domain.RestorationCase) ([]domain.AuditEvent, error) {
 		if err := c.EnsureMutable(); err != nil {
 			return nil, err
 		}
