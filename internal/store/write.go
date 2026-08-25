@@ -92,6 +92,11 @@ func (s *SQLiteStore) UpdateCase(ctx context.Context, caseID string, expectedVer
 	if err := tx.Commit(); err != nil {
 		return nil, false, err
 	}
+	if current.Approval != nil {
+		if err := insertApproval(ctx, s.db, *current.Approval); err != nil {
+			return nil, false, err
+		}
+	}
 	return current, false, nil
 }
 
@@ -137,17 +142,6 @@ func replaceChildren(ctx context.Context, tx *sql.Tx, c *domain.RestorationCase)
 	for _, deviation := range c.Deviations {
 		if err := insertDeviation(ctx, tx, deviation); err != nil {
 			return fmt.Errorf("重建偏差 %s: %w", deviation.DeviationID, err)
-		}
-	}
-	if c.Approval != nil {
-		var count int
-		if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM approval_records WHERE case_id=?`, c.CaseID).Scan(&count); err != nil {
-			return err
-		}
-		if count == 0 {
-			if err := insertApproval(ctx, tx, *c.Approval); err != nil {
-				return err
-			}
 		}
 	}
 	return nil
@@ -215,8 +209,12 @@ func insertDeviation(ctx context.Context, tx *sql.Tx, d domain.Deviation) error 
 	return err
 }
 
-func insertApproval(ctx context.Context, tx *sql.Tx, a domain.ApprovalRecord) error {
-	_, err := tx.ExecContext(ctx, `INSERT INTO approval_records VALUES(?,?,?,?,?,?,?,?,?,?)`, a.ApprovalID, a.CaseID, a.Decision, a.ReviewComment, a.ApprovedFormulaID, a.FrozenCaseVersion, a.SnapshotDigest, a.SnapshotJSON, a.DecidedBy, timestamp(a.DecidedAt))
+type statementExecutor interface {
+	ExecContext(context.Context, string, ...any) (sql.Result, error)
+}
+
+func insertApproval(ctx context.Context, executor statementExecutor, a domain.ApprovalRecord) error {
+	_, err := executor.ExecContext(ctx, `INSERT INTO approval_records VALUES(?,?,?,?,?,?,?,?,?,?)`, a.ApprovalID, a.CaseID, a.Decision, a.ReviewComment, a.ApprovedFormulaID, a.FrozenCaseVersion, a.SnapshotDigest, a.SnapshotJSON, a.DecidedBy, timestamp(a.DecidedAt))
 	return err
 }
 
