@@ -4,31 +4,58 @@ import (
 	"context"
 	"stone-restoration-trial/internal/domain"
 	"stone-restoration-trial/internal/store"
+	"sync"
 	"time"
 )
 
 type Service struct {
 	repository store.Repository
 	now        func() time.Time
+	caseMu     sync.Mutex
+	caseLoads  map[string]*caseLoad
+}
+
+type caseLoad struct {
+	done  chan struct{}
+	value *domain.RestorationCase
+	err   error
 }
 
 func New(repository store.Repository) *Service {
-	return &Service{repository: repository, now: time.Now}
+	return &Service{repository: repository, now: time.Now, caseLoads: make(map[string]*caseLoad)}
 }
 
 func NewWithClock(repository store.Repository, clock func() time.Time) *Service {
-	return &Service{repository: repository, now: clock}
+	return &Service{repository: repository, now: clock, caseLoads: make(map[string]*caseLoad)}
 }
 
 func (s *Service) GetCase(ctx context.Context, id string) (*domain.RestorationCase, error) {
+	s.caseMu.Lock()
+	if pending := s.caseLoads[id]; pending != nil {
+		s.caseMu.Unlock()
+		select {
+		case <-pending.done:
+			return pending.value, pending.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+	pending := &caseLoad{done: make(chan struct{})}
+	s.caseLoads[id] = pending
+	s.caseMu.Unlock()
+
 	value, err := s.repository.GetCase(ctx, id)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		err = domain.PopulateDerivedEvidence(value)
 	}
-	if err := domain.PopulateDerivedEvidence(value); err != nil {
-		return nil, err
-	}
-	return value, nil
+	pending.value = value
+	pending.err = err
+
+	s.caseMu.Lock()
+	delete(s.caseLoads, id)
+	close(pending.done)
+	s.caseMu.Unlock()
+	return value, err
 }
 func (s *Service) ListCases(ctx context.Context) ([]domain.RestorationCase, error) {
 	values, err := s.repository.ListCases(ctx)
