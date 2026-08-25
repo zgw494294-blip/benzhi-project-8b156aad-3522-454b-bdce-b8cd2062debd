@@ -4,23 +4,32 @@ import (
 	"context"
 	"stone-restoration-trial/internal/domain"
 	"stone-restoration-trial/internal/store"
+	"sync"
 	"time"
 )
 
 type Service struct {
 	repository store.Repository
 	now        func() time.Time
+	caseMu     sync.RWMutex
+	caseCache  map[string]*domain.RestorationCase
 }
 
 func New(repository store.Repository) *Service {
-	return &Service{repository: repository, now: time.Now}
+	return &Service{repository: repository, now: time.Now, caseCache: map[string]*domain.RestorationCase{}}
 }
 
 func NewWithClock(repository store.Repository, clock func() time.Time) *Service {
-	return &Service{repository: repository, now: clock}
+	return &Service{repository: repository, now: clock, caseCache: map[string]*domain.RestorationCase{}}
 }
 
 func (s *Service) GetCase(ctx context.Context, id string) (*domain.RestorationCase, error) {
+	s.caseMu.RLock()
+	cached, found := s.caseCache[id]
+	s.caseMu.RUnlock()
+	if found {
+		return cached, nil
+	}
 	value, err := s.repository.GetCase(ctx, id)
 	if err != nil {
 		return nil, err
@@ -28,6 +37,9 @@ func (s *Service) GetCase(ctx context.Context, id string) (*domain.RestorationCa
 	if err := domain.PopulateDerivedEvidence(value); err != nil {
 		return nil, err
 	}
+	s.caseMu.Lock()
+	s.caseCache[id] = value
+	s.caseMu.Unlock()
 	return value, nil
 }
 func (s *Service) ListCases(ctx context.Context) ([]domain.RestorationCase, error) {
