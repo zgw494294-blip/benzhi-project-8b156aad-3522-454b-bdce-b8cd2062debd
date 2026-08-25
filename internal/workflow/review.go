@@ -44,7 +44,7 @@ func (s *Service) DecideReview(ctx context.Context, caseID string, command Revie
 		return nil, false, domain.Invalid("reviewComment", "审查意见不能为空")
 	}
 	now := s.now().UTC()
-	return s.repository.UpdateCase(ctx, caseID, command.ExpectedVersion, command.IdempotencyKey, requestHash(command), func(c *domain.RestorationCase) ([]domain.AuditEvent, error) {
+	value, replayed, err := s.repository.UpdateCase(ctx, caseID, command.ExpectedVersion, command.IdempotencyKey, requestHash(command), func(c *domain.RestorationCase) ([]domain.AuditEvent, error) {
 		if c.Status != domain.StatusPending {
 			return nil, domain.ErrInvalidState
 		}
@@ -67,4 +67,9 @@ func (s *Service) DecideReview(ctx context.Context, caseID string, command Revie
 		c.Approval = approval
 		return []domain.AuditEvent{event(caseID, "review.approved", "技术审查批准并冻结证据", command.Actor, now, map[string]any{"approvalID": approval.ApprovalID, "formulaID": approval.ApprovedFormulaID, "snapshotDigest": digest})}, nil
 	})
+	if err != nil {
+		return nil, false, err
+	}
+	delete(s.approvalCache, caseID)
+	return value, replayed, nil
 }

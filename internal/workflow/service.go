@@ -8,16 +8,17 @@ import (
 )
 
 type Service struct {
-	repository store.Repository
-	now        func() time.Time
+	repository    store.Repository
+	now           func() time.Time
+	approvalCache map[string]*domain.ApprovalEvidence
 }
 
 func New(repository store.Repository) *Service {
-	return &Service{repository: repository, now: time.Now}
+	return &Service{repository: repository, now: time.Now, approvalCache: map[string]*domain.ApprovalEvidence{}}
 }
 
 func NewWithClock(repository store.Repository, clock func() time.Time) *Service {
-	return &Service{repository: repository, now: clock}
+	return &Service{repository: repository, now: clock, approvalCache: map[string]*domain.ApprovalEvidence{}}
 }
 
 func (s *Service) GetCase(ctx context.Context, id string) (*domain.RestorationCase, error) {
@@ -50,11 +51,19 @@ func (s *Service) Approval(ctx context.Context, id string) (*domain.ApprovalReco
 }
 
 func (s *Service) ApprovalEvidence(ctx context.Context, id string) (*domain.ApprovalEvidence, error) {
+	if cached, ok := s.approvalCache[id]; ok {
+		return cached, nil
+	}
 	record, err := s.repository.Approval(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return domain.VerifyApprovalSnapshot(record)
+	evidence, err := domain.VerifyApprovalSnapshot(record)
+	if err != nil {
+		return nil, err
+	}
+	s.approvalCache[id] = evidence
+	return evidence, nil
 }
 
 func (s *Service) Health(ctx context.Context) error {
