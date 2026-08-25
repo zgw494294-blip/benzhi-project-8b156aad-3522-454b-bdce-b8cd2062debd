@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"stone-restoration-trial/internal/workflow"
 )
@@ -11,7 +12,7 @@ func (s *Server) CreateCase(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	value, replayed, err := s.workflow.CreateCase(r.Context(), command)
+	value, replayed, err := s.workflow.CreateCase(context.WithoutCancel(r.Context()), command)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -29,7 +30,7 @@ func (s *Server) AddFormula(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	value, replayed, err := s.workflow.AddFormula(r.Context(), r.PathValue("caseID"), command)
+	value, replayed, err := s.workflow.AddFormula(context.WithoutCancel(r.Context()), r.PathValue("caseID"), command)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -43,7 +44,7 @@ func (s *Server) ReviseBaseline(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	value, replayed, err := s.workflow.ReviseBaseline(r.Context(), r.PathValue("caseID"), command)
+	value, replayed, err := s.workflow.ReviseBaseline(context.WithoutCancel(r.Context()), r.PathValue("caseID"), command)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -57,7 +58,7 @@ func (s *Server) AddPatch(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	value, replayed, err := s.workflow.AddPatch(r.Context(), r.PathValue("caseID"), command)
+	value, replayed, err := s.workflow.AddPatch(context.WithoutCancel(r.Context()), r.PathValue("caseID"), command)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -71,7 +72,7 @@ func (s *Server) RecordObservation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	value, replayed, err := s.workflow.RecordObservation(r.Context(), r.PathValue("caseID"), r.PathValue("patchID"), command)
+	value, replayed, err := s.workflow.RecordObservation(context.WithoutCancel(r.Context()), r.PathValue("caseID"), r.PathValue("patchID"), command)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -86,7 +87,7 @@ func (s *Server) RemediateDeviation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	command.DeviationID = r.PathValue("deviationID")
-	value, replayed, err := s.workflow.Remediate(r.Context(), r.PathValue("caseID"), command)
+	value, replayed, err := s.workflow.Remediate(context.WithoutCancel(r.Context()), r.PathValue("caseID"), command)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -100,7 +101,7 @@ func (s *Server) SubmitReview(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	value, replayed, err := s.workflow.SubmitReview(r.Context(), r.PathValue("caseID"), command)
+	value, replayed, err := s.workflow.SubmitReview(context.WithoutCancel(r.Context()), r.PathValue("caseID"), command)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -114,7 +115,7 @@ func (s *Server) ReviewDecision(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	value, replayed, err := s.workflow.DecideReview(r.Context(), r.PathValue("caseID"), command)
+	value, replayed, err := s.workflow.DecideReview(context.WithoutCancel(r.Context()), r.PathValue("caseID"), command)
 	if err != nil {
 		writeError(w, err)
 		return
