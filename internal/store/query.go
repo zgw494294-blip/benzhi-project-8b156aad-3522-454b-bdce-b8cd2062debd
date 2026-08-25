@@ -8,24 +8,41 @@ import (
 )
 
 func (s *SQLiteStore) ListCases(ctx context.Context) ([]domain.RestorationCase, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT case_id FROM restoration_cases ORDER BY updated_at DESC,case_id`)
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT cases.case_id,
+		       EXISTS(SELECT 1 FROM formula_revisions AS formulas WHERE formulas.case_id = cases.case_id)
+		FROM restoration_cases AS cases
+		ORDER BY cases.updated_at DESC,cases.case_id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	ids := []string{}
+	prefetched := map[string]domain.RestorationCase{}
 	for rows.Next() {
 		var id string
-		if err := rows.Scan(&id); err != nil {
+		var hasMaterialDetails bool
+		if err := rows.Scan(&id, &hasMaterialDetails); err != nil {
 			return nil, err
 		}
 		ids = append(ids, id)
+		if hasMaterialDetails {
+			value, err := s.GetCase(ctx, id)
+			if err != nil {
+				return nil, err
+			}
+			prefetched[id] = *value
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	result := make([]domain.RestorationCase, 0, len(ids))
 	for _, id := range ids {
+		if value, ok := prefetched[id]; ok {
+			result = append(result, value)
+			continue
+		}
 		value, err := s.GetCase(ctx, id)
 		if err != nil {
 			return nil, err
