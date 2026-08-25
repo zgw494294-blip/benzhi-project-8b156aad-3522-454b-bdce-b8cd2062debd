@@ -2,8 +2,23 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"sync"
 )
+
+var cachedSchemaVersionStatement struct {
+	once      sync.Once
+	statement *sql.Stmt
+	err       error
+}
+
+func schemaVersionStatement(db *sql.DB) (*sql.Stmt, error) {
+	cachedSchemaVersionStatement.once.Do(func() {
+		cachedSchemaVersionStatement.statement, cachedSchemaVersionStatement.err = db.Prepare(`SELECT version FROM schema_meta LIMIT 1`)
+	})
+	return cachedSchemaVersionStatement.statement, cachedSchemaVersionStatement.err
+}
 
 // Check 验证健康端点依赖的持久化不变量。除连通性之外，
 // 它还检查迁移版本、SQLite 完整性、外键和批准冻结状态。
@@ -11,8 +26,12 @@ func (s *SQLiteStore) Check(ctx context.Context) error {
 	if err := s.db.PingContext(ctx); err != nil {
 		return fmt.Errorf("数据库连接不可用: %w", err)
 	}
+	statement, err := schemaVersionStatement(s.db)
+	if err != nil {
+		return fmt.Errorf("准备 schemaVersion 检查: %w", err)
+	}
 	var version int
-	if err := s.db.QueryRowContext(ctx, `SELECT version FROM schema_meta LIMIT 1`).Scan(&version); err != nil {
+	if err := statement.QueryRowContext(ctx).Scan(&version); err != nil {
 		return fmt.Errorf("读取 schemaVersion: %w", err)
 	}
 	if version != 1 {
