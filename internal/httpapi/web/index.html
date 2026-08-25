@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="历史建筑石材修复试配验证工作台">
+  <title>石材修复试配验证工作台</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="/assets/features.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><span class="eyebrow">CONSERVATION LAB</span><h1>石材修复试配验证</h1></div>
+    <button id="newCaseButton" class="primary">新建试配任务</button>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="section-title"><h2>任务台账</h2><button id="refreshButton" class="icon" title="刷新">↻</button></div>
+      <div id="caseList" class="case-list"><p class="muted">正在载入…</p></div>
+    </aside>
+    <section class="workspace">
+      <div id="emptyState" class="empty-state"><div class="stone-mark">◇</div><h2>从一项修复试配开始</h2><p>定义验收阈值，固化配方与试验块，再依次完成三阶段养护观测。</p></div>
+      <div id="caseView" class="hidden">
+        <div class="case-heading"><div><div id="caseStatus" class="status"></div><h2 id="caseTitle"></h2><p id="caseSubtitle" class="muted"></p></div><div class="version">VERSION <strong id="caseVersion"></strong></div></div>
+        <nav class="tabs" aria-label="任务详情"><button class="active" data-tab="overview">概览</button><button data-tab="formulas">配方与试验块</button><button data-tab="deviations">偏差整改</button><button data-tab="timeline">事件时间线</button><button data-tab="approval">批准记录</button></nav>
+        <div id="overview" class="tab-panel"></div>
+        <div id="formulas" class="tab-panel hidden"></div>
+        <div id="deviations" class="tab-panel hidden"></div>
+        <div id="timeline" class="tab-panel hidden"></div>
+        <div id="approval" class="tab-panel hidden"></div>
+      </div>
+    </section>
+  </main>
+  <dialog id="actionDialog"><form id="actionForm" method="dialog"><div class="dialog-head"><h2 id="dialogTitle"></h2><button type="button" id="closeDialog" class="icon">×</button></div><div id="dialogFields"></div><div id="formError" class="error hidden"></div><div class="dialog-actions"><button type="button" id="cancelDialog">取消</button><button type="submit" class="primary">确认提交</button></div></form></dialog>
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>
